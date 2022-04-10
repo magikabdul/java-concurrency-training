@@ -1,35 +1,34 @@
 package pl.training.concurrency.ex011_chat_v2;
 
+import lombok.RequiredArgsConstructor;
+
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class SynchronizedChatWorkersProxy implements ChatWorkers {
+@RequiredArgsConstructor
+class SynchronizedServiceWorkers implements ServerWorkers {
 
+    private final ServerWorkers serverWorkers;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
-    private final ChatWorkers chatWorkers;
-
-    public SynchronizedChatWorkersProxy(ChatWorkers chatWorkers) {
-        this.chatWorkers = chatWorkers;
-    }
 
     @Override
-    public void add(ChatWorker chatWorker) {
+    public void add(Worker worker) {
         lock.writeLock().lock();
-        chatWorkers.add(chatWorker);
+        serverWorkers.add(worker);
         lock.writeLock().unlock();
     }
 
     @Override
-    public void remove(ChatWorker chatWorker) {
+    public void remove(Worker worker) {
         lock.writeLock().lock();
-        chatWorkers.remove(chatWorker);
+        serverWorkers.remove(worker);
         lock.writeLock().unlock();
     }
 
     @Override
     public void broadcast(String text) {
         lock.readLock().lock();
-        chatWorkers.broadcast(text);
+        serverWorkers.broadcast(text);
         lock.readLock().unlock();
     }
 

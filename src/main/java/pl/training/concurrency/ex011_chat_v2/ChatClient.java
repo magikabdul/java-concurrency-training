@@ -1,35 +1,38 @@
 package pl.training.concurrency.ex011_chat_v2;
 
+import lombok.extern.java.Log;
+import pl.training.concurrency.ex011_chat_v2.commons.Sockets;
+import pl.training.concurrency.ex011_chat_v2.commons.TextReader;
+import pl.training.concurrency.ex011_chat_v2.commons.TextWriter;
+
 import java.io.IOException;
 import java.net.Socket;
-import java.util.function.Consumer;
+import java.util.UUID;
 
+@Log
 public class ChatClient {
 
-    private final Consumer<String> onText;
+    private static final int DEFAULT_PORT = 8888;
+
     private final Runnable readFromSocket;
     private final Runnable readFromConsole;
 
     public ChatClient(String host, int port, String name) throws IOException {
-        Socket socket = new Socket(host, port);
-        onText = text -> new MessageWriter(socket).write(name + ": " + text);
-        readFromSocket = () -> new MessageReader(socket, System.out::println, () -> {}).read();
-        readFromConsole = () -> new MessageReader(System.in, onText).read();
-    }
-
-    public static void main(String[] args) throws IOException {
-        Thread.setDefaultUncaughtExceptionHandler(new GlobalExceptionHandler());
-        String host = args[0];
-        int port = Integer.parseInt(args[1]);
-        String name = args[2];
-        new ChatClient(host, port, name).start();
+        var socket = new Socket(host, port);
+        readFromSocket = () -> new TextReader(socket, log::info, () -> Sockets.close(socket)).read();
+        readFromConsole = () -> new TextReader(System.in, text -> new TextWriter(socket).write(name + ": " + text)).read();
     }
 
     private void start() {
         new Thread(readFromSocket).start();
-        Thread consoleMessageReader = new Thread(readFromConsole);
-        consoleMessageReader.setDaemon(true);
-        consoleMessageReader.start();
+        var consoleReader = new Thread(readFromConsole);
+        consoleReader.setDaemon(true);
+        consoleReader.start();
+    }
+
+    public static void main(String[] args) throws IOException {
+        var port = Sockets.parsePort(args[1], DEFAULT_PORT);
+        new ChatClient(args[0], port, UUID.randomUUID().toString()).start();
     }
 
 }
